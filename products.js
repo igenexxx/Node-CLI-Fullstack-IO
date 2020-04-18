@@ -1,6 +1,7 @@
 const cuid = require('cuid');
 
 const db = require('./db');
+const { productsMapper } = require('./utils/products-mapper');
 
 const Product = db.model('Product', {
   _id: { type: String, default: cuid },
@@ -12,9 +13,11 @@ const Product = db.model('Product', {
   userName: String,
   userLink: String,
   tags: { type: [String], index: true }
-})
+});
 
-const productFile = path.join(__dirname, './products.json');
+async function create(fields) {
+  return await new Product(productsMapper(fields)).save();
+}
 
 async function list(opts = {}) {
   const { offset = 0, limit = 25, tag } = opts;
@@ -40,5 +43,6 @@ async function get(id) {
 
 module.exports = {
   list,
-  get
+  get,
+  create
 }
