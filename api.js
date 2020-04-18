@@ -18,7 +18,22 @@ async function getProduct(req, res, next) {
   if (!product) return next();
 }
 
+async function createProduct(req, res, next) {
+  const product = await Products.create(req.body);
+  res.json(product);
+}
+
+async function editProduct(req, res, next) {
+  // console.log(req.body);
+  res.json(req.body);
+}
+
+async function deleteProduct(req, res, next) {
+  res.json({ success: true });
+}
+
 module.exports = autoCatch({
+  createProduct,
   listProducts,
   getProduct,
 });
