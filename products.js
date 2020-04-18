@@ -21,28 +21,37 @@ async function create(fields) {
 
 async function list(opts = {}) {
   const { offset = 0, limit = 25, tag } = opts;
-  try {
-    const data = await fs.readFile(productFile);
-    const result = JSON.parse(data.toString())
-      .slice(offset, offset + limit);
+  const query = tag ? { tags: tag } : {};
 
-    return tag ? result.filter(product => product.includes(tag)) : result;
-  } catch (e) {
-    throw new Error(`${__filename}: ${e.message}`);
-  }
+  const products = await Product
+    .find(query)
+    .sort({ _id: 1 })
+    .skip(offset)
+    .limit(limit);
+
+  return products;
 }
 
-async function get(id) {
-  try {
-    const data = await fs.readFile(productFile);
-    return JSON.parse(data.toString()).find(({ id: productId }) => productId === id) || null;
-  } catch (e) {
-    throw new Error(`Error while getting product: ${ e.message }`);
-  }
+async function get(_id) {
+  const product = await Product.findById(_id);
+  return product;
+}
+
+async function edit(_id, change) {
+  const product = await get({ _id });
+  Object.keys(change).forEach(key => product[key] = change[key]);
+  await product.save();
+  return product;
+}
+
+async function remove(_id) {
+  await Product.deleteOne({ _id });
 }
 
 module.exports = {
   list,
   get,
-  create
+  create,
+  edit,
+  remove,
 }
