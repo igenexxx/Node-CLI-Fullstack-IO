@@ -1,4 +1,5 @@
-const Products = require('./products');
+const Products = require('./models/products');
+const Orders = require('./models/orders');
 const autoCatch = require('./lib/auto-catch');
 
 async function listProducts(req, res) {
@@ -36,10 +37,30 @@ async function deleteProduct(req, res, next) {
   res.json({ success: true });
 }
 
+async function createOrder(req, res, next) {
+  const order = await Orders.create(req.body);
+  res.json(order);
+}
+
+async function listOrders(req, res, next) {
+  const { offset = 0, limit = 25, productId, status } = req.query;
+
+  const orders = await Orders.list({
+    offset: Number(offset),
+    limit: Number(limit),
+    productId,
+    status,
+  });
+
+  res.json(orders);
+}
+
 module.exports = autoCatch({
   createProduct,
   listProducts,
   getProduct,
   editProduct,
   deleteProduct,
+  createOrder,
+  listOrders,
 });

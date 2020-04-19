@@ -1,8 +1,8 @@
 const cuid = require('cuid');
 const { isURL } = require('validator');
 
-const db = require('./db');
-const { productsMapper } = require('./utils/products-mapper');
+const db = require('../db');
+const { productsMapper } = require('../utils/products-mapper');
 
 const Product = db.model('Product', {
   _id: { type: String, default: cuid },
