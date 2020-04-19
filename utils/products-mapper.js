@@ -21,11 +21,11 @@ const productsMapper = product => {
 
   return {
     description: description || alt_description,
-    imgThumb,
-    img,
+    imgThumb: imgThumb || product.imgThumb,
+    img: img || product.img,
     link,
-    userId,
-    userName,
+    userId: userId || product.userId,
+    userName: userName || product.userName,
     userLink,
     tags
   };

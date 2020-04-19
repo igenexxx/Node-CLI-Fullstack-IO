@@ -1,21 +1,8 @@
 const cuid = require('cuid');
-const { isUrl } = require('validator');
+const { isURL } = require('validator');
 
 const db = require('./db');
 const { productsMapper } = require('./utils/products-mapper');
-
-function urlSchema(opts = {}) {
-  const { required } = opts;
-
-  return {
-    type: String,
-    required: !!required,
-    validate: {
-      validator: isUrl,
-      message: props => `${ props.value } is not a valid URL`,
-    }
-  }
-}
 
 const Product = db.model('Product', {
   _id: { type: String, default: cuid },
@@ -61,6 +48,19 @@ async function edit(_id, change) {
 async function remove(_id) {
   await Product.deleteOne({ _id });
 }
+
+function urlSchema (opts = {}) {
+  const { required } = opts;
+  return {
+    type: String,
+    required: required,
+    validate: {
+      validator: isURL,
+      message: props => `${props.value} is not a valid URL`
+    }
+  }
+}
+
 
 module.exports = {
   list,
