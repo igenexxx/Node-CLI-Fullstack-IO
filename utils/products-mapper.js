@@ -5,17 +5,17 @@ const productsMapper = product => {
     urls: {
       thumb: imgThumb,
       regular: img,
-    },
+    } = {},
     links: {
       download: link
-    },
+    } = {},
     user: {
       id: userId,
       name: userName,
       links: {
         html: userLink,
-      }
-    },
+      } = {}
+    } = {},
     tags
   } = product;
 
