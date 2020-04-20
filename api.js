@@ -1,6 +1,12 @@
+const AWS = require('aws-sdk');
+const { promisify } = require('util');
+
 const Products = require('./models/products');
 const Orders = require('./models/orders');
 const autoCatch = require('./lib/auto-catch');
+
+const s3 = new AWS.S3();
+s3.uploadP = promisify(s3.upload);
 
 async function listProducts(req, res) {
   const { offset = 0, limit = 25, tag } = req.query;
@@ -55,6 +61,31 @@ async function listOrders(req, res, next) {
   res.json(orders);
 }
 
+async function setProductImage(req, res) {
+  const productId = req.params.id;
+
+  const ext = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg'
+  }[req.headers['content-type']];
+
+  if (!ext) throw new Error('Invalid Image Type');
+
+  const params = {
+    Bucket: 'fullstack-printshop',
+    Key: `product-images/${productId}.${ext}`,
+    Body: req, // req is a stream, similar to fs.createReadStream
+    ACL: 'public-read'
+  };
+
+  const object = await s3.uploadP(params); //our custom promise version
+
+  const change = { img: object.Location };
+  const product = await Products.edit(productId, change);
+
+  res.json(product);
+}
+
 module.exports = autoCatch({
   createProduct,
   listProducts,
@@ -63,4 +94,5 @@ module.exports = autoCatch({
   deleteProduct,
   createOrder,
   listOrders,
+  setProductImage
 });
