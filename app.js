@@ -13,7 +13,6 @@ const app = express();
 app.use(middleware.cors);
 app.use(bodyParser.json());
 app.use(cookieParser());
-auth.setMiddleware(app);
 
 app.post('/login', auth.authenticate, auth.login);
 

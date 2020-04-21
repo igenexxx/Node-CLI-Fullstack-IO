@@ -1,41 +1,48 @@
 const passport = require('passport');
 const Strategy = require('passport-local').Strategy;
-const expressSession = require('express-session');
+const jwt = require('jsonwebtoken');
 
-const sessionSecret = process.env.SESSION_SECRET || 'mark it zero';
+const autoCatch = require('./lib/auto-catch');
+
+const jwtSecret = process.env.JWT_SECRET || 'mark it zero';
 const adminPassword = process.env.ADMIN_PASSWORD || 'iamthewalrus';
+const jwtOpts = { algorithm: 'HS256', expiresIn: '30d' };
 
 passport.use(adminStrategy());
-passport.serializeUser((user, cb) => cb(null, user));
-passport.deserializeUser((user, cb) => cb(null, user));
 
-const authenticate = passport.authenticate('local');
+const authenticate = passport.authenticate('local', { session: false });
 
-function login(req, res, next) {
-  res.json({ success: true });
+async function login(req, res, next) {
+  const token = await sign({ username: req.user.username });
+  res.cookie('jwt', token, { httpOnly: true });
+  res.json({ success: true, token });
 }
 
-function setMiddleware(app) {
-  app.use(session());
-  app.use(passport.initialize());
-  app.use(passport.session());
+async function sign(payload) {
+  return await jwt.sign(payload, jwtSecret, jwtOpts);
 }
 
-function session() {
-  return expressSession({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false
-  })
-}
-
-function ensureAdmin(req, res, next) {
-  const isAdmin = req.user && req.user.username === 'admin';
-  if (isAdmin) return next();
+async function ensureAdmin(req, res, next) {
+  const jwtString = req.headers.authoriztion || req.cookies.jwt;
+  const payload = await verify(jwtString);
+  if (payload.username === 'admin') {
+    return next();
+  }
 
   const err = new Error('Unauthorized');
   err.statusCode = 401;
   next(err);
+}
+
+async function verify(jwtString = '') {
+  jwtString = jwtString.replace(/^Bearer /i, '');
+
+  try {
+    return await jwt.verify(jwtString, jwtSecret);
+  } catch (e) {
+    e.statusCode = 401;
+    throw e;
+  }
 }
 
 function adminStrategy() {
