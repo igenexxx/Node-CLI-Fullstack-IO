@@ -1,8 +1,11 @@
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const Strategy = require('passport-local').Strategy;
+const bcrypt = require('bcrypt');
 
 const autoCatch = require('./lib/auto-catch');
+
+const Users = require('./models/users');
 
 const jwtSecret = process.env.JWT_SECRET || 'mark it zero';
 const adminPassword = process.env.ADMIN_PASSWORD || 'iamthewalrus';
@@ -43,14 +46,23 @@ async function verify (jwtString = '') {
   }
 }
 
-function adminStrategy () {
-  return new Strategy(function (username, password, cb) {
+function adminStrategy() {
+  return new Strategy(async function (username, password, cb) {
     const isAdmin = username === 'admin' && password === adminPassword
     if (isAdmin) return cb(null, { username: 'admin' })
+    try {
+      const user = await Users.get(username)
+      if (!user) return cb(null, false)
+      const isUser = await bcrypt.compare(password, user.password);
+      console.log(isUser);
+      if (isUser) return cb(null, { username: user.username })
+    } catch (err) {
+      console.err(err);
+      cb(null, false)
+    }
     cb(null, false)
   })
 }
-
 
 module.exports = autoCatch({
   login,

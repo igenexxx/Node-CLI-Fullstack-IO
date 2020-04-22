@@ -25,6 +25,8 @@ app.delete('/products/:id', auth.ensureAdmin, api.deleteProduct);
 app.get('/orders', auth.ensureAdmin, api.listOrders);
 app.post('/orders', auth.ensureAdmin, api.createOrder);
 
+app.post('/users', api.createUser)
+
 app.use(middleware.handleError);
 app.use(middleware.notFound);
 

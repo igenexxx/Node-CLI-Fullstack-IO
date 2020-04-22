@@ -3,6 +3,7 @@ const { promisify } = require('util');
 
 const Products = require('./models/products');
 const Orders = require('./models/orders');
+const Users = require('./models/users');
 const autoCatch = require('./lib/auto-catch');
 
 const s3 = new AWS.S3();
@@ -86,6 +87,12 @@ async function setProductImage(req, res) {
   res.json(product);
 }
 
+async function createUser(req, res, next) {
+  const user = await Users.create(req.body);
+  const { username, email } = user;
+  res.json({ username, email });
+}
+
 module.exports = autoCatch({
   createProduct,
   listProducts,
@@ -94,5 +101,6 @@ module.exports = autoCatch({
   deleteProduct,
   createOrder,
   listOrders,
-  setProductImage
+  setProductImage,
+  createUser
 });
