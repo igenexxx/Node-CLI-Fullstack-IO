@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 const yargs = require('yargs');
+const chalk = require('chalk');
+const prompts = require('prompts');
 const Table = require('cli-table');
+const netrc = require('netrc');
 const ApiClient = require('./api-clients');
+
+const config = netrc();
 
 yargs
   .option('endpoint', {
@@ -52,19 +57,12 @@ yargs
         required: true,
         describe: 'New value for product key'
       },
-      username: {
-        alias: 'u',
-        required: true,
-        describe: 'Login username'
-      },
-      password: {
-        alias: 'p',
-        required: true,
-        describe: 'Login password'
-      }
     },
     editProduct,
   )
+  .command('login', 'Log in to API', {}, login)
+  .command('logout', 'Log out of API', {}, logout)
+  .command('whoami', 'Check login status', {}, whoami)
   .help()
   .demandCommand(1, 'You need at least one command before moving on')
   .parse();
@@ -109,12 +107,109 @@ async function viewProduct(opts) {
   console.log(table.toString());
 }
 
+const promptsCredentialsConfig = [
+  {
+    name: 'username',
+    message: chalk.gray('What is your username?'),
+    type: 'text'
+  },
+  {
+    name: 'password',
+    message: chalk.gray('What is your password?'),
+    type: 'password'
+  }
+];
+
 async function editProduct(opts) {
-  const { id, key, value, endpoint, username, password } = opts;
+  const { id, key, value, endpoint } = opts;
+
+  const authToken = await ensureLoggedIn({ endpoint });
+  if (!authToken) {
+    return console.log(`Please log in to continue.`)
+  }
+
   const change = { [key]: value };
 
-  const api = ApiClient({ username, password, endpoint });
+  const api = ApiClient({ authToken, endpoint });
   await api.editProduct(id, change);
 
   await viewProduct({ id, endpoint });
+}
+
+async function login(opts) {
+  const { endpoint } = opts;
+
+  const { username, password } = await prompts(promptsCredentialsConfig);
+
+  try {
+    const api = ApiClient({ username, password, endpoint });
+    const authToken = await api.login();
+
+    saveConfig({ endpoint, username, authToken });
+
+    console.log(chalk.green(`Logged in as ${chalk.bold(username)}`));
+    return authToken;
+  } catch (e) {
+    const shouldRetry = await askRetry(err);
+    if (shouldRetry) {
+      return login(opts);
+    }
+  }
+
+  return null;
+}
+
+function saveConfig({ endpoint, username, authToken }) {
+  const allConfig = netrc();
+  const host = endpointToHost(endpoint);
+  allConfig[host] = { login: username, password: authToken };
+  netrc.save(allConfig);
+}
+
+function endpointToHost(endpoint) {
+  return endpoint.split('://')[1];
+}
+
+function logout({ endpoint }) {
+  saveConfig({ endpoint });
+  console.log('You are now logged out.');
+}
+
+function whoami({ endpoint}) {
+  const { username } = loadConfig({ endpoint });
+
+  const message = username
+    ? `You are logged in as ${ chalk.bold(username) }`
+    : `You are not currently logged in.`;
+
+  console.log(message);
+}
+
+function loadConfig({ endpoint }) {
+ const host = endpointToHost(endpoint);
+ const config = netrc()[host] || {};
+ return { username: config.login, authToken: config.password };
+}
+
+async function ensureLoggedIn({ endpoint }) {
+  let { authToken } = loadConfig({ endpoint });
+  if (authToken) {
+    return authToken;
+  }
+
+  authToken = await login({ endpoint });
+  return authToken;
+}
+
+async function askRetry(error) {
+  const { status } = error.response || {};
+  const message = status === 401 ? `Incorrect username and/or password.` : error.message;
+
+  const { retry } = await prompts({
+    name: 'retry',
+    type: 'confirm',
+    message: chalk.red(`${ message } Retry?`)
+  });
+
+  return retry;
 }
